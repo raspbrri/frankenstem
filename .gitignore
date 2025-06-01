@@ -1,0 +1,26 @@
+# Python bytecode and cache
+__pycache__/
+*.pyc
+
+# Audio files
+*.wav
+*.mp3
+*.aiff
+*.flac
+*.ogg
+
+# Ignore input files, but keep the folder
+input/*
+!input/.gitkeep
+
+# Ignore output files, but keep the folder
+output/*
+!output/.gitkeep
+
+# Ignore virtual environments
+env/
+.venv/
+
+# macOS + Windows system files
+.DS_Store
+Thumbs.db
