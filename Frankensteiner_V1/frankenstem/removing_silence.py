@@ -22,7 +22,6 @@ def remove_silence(audio, sr, bpm, silence_thresh_db=-40):
     subwindow_size = int(sr * 0.1)  # 100 ms subwindows
     i = 0
 
-
     while i < len(beat_boundaries) - 1:
         start = beat_boundaries[i]
         end = beat_boundaries[i + 1]

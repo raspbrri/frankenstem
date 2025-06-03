@@ -1,6 +1,7 @@
 import librosa
-import numpy as np
-import random 
+import numpy as n
+from frankenstem.remove_silence_to_beat import remove_silence
+import random
 
 def slice_into_random_beats(audio, sr, bpm, min_beats=2, max_beats=4):
     """
@@ -13,6 +14,10 @@ def slice_into_random_beats(audio, sr, bpm, min_beats=2, max_beats=4):
 
     segments = []
     i = 0
+
+    # remove silence from the audio signal
+    audio = remove_silence(audio, sr, bpm)
+
     while i < len(beat_boundaries) - min_beats:
         n_beats = random.randint(min_beats, max_beats) # randomly choose number of beats for segment
         start = beat_boundaries[i] # start of the segment in the audio file

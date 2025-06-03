@@ -1,31 +1,28 @@
 from frankenstem.audio_io import load_audio
 from frankenstem.splicer import slice_into_random_beats
 from frankenstem.combiner import combine_segments
-from frankenstem.remove_silence_to_beat import remove_silence
-import numpy as np
-from datetime import datetime
+from frankenstem.removing_silence import remove_silence
+from frankenstem.parser.file_parser import load_songs_from_folder
 import soundfile as sf
+from datetime import datetime
+import numpy as np
 
-# Paths to two stems of the same type (e.g. vocals)
-AUDIO_PATH_A = "input/Song_A (Vocals).wav"
-AUDIO_PATH_B = "input/Song_B (Vocals).wav"
+input_path = "Frankensteiner_V1/input"
+songs = load_songs_from_folder(input_path)
+
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 OUTPUT_PATH = f"output/frankenstem_vocals_{timestamp}.wav"
 
-# BPM assumed same for both songs
+# BPM assumed same for all songs - ADD CODE LATER TO ASK USER FOR BPM
 BPM = 130
 
-# Load audio
+# Load audio - ADD CODE LATER TO AUTOMATICALLY DO ALL OF THESE THINGS FOR EACH SONG
 audio_a, sr = load_audio(AUDIO_PATH_A)
 audio_b, _  = load_audio(AUDIO_PATH_B)
 
-# remove silence from the audio files
-clean_a = remove_silence_to_beat(audio_a, sr, BPM)
-clean_b = remove_silence_to_beat(audio_b, sr, BPM)
-
 # Slice each into beat segments (2–4 beat chunks)
-segments_a = slice_into_random_beats(clean_a, sr, BPM)
-segments_b = slice_into_random_beats(clean_b, sr, BPM)
+segments_a = slice_into_random_beats(audio_a, sr, BPM)
+segments_b = slice_into_random_beats(audio_b, sr, BPM)
 
 print(f"{len(segments_a)} segments from Song A")
 print(f"{len(segments_b)} segments from Song B")
