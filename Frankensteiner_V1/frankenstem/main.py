@@ -1,6 +1,7 @@
 from frankenstem.audio_io import load_audio
 from frankenstem.splicer import slice_into_random_beats
 from frankenstem.combiner import combine_segments
+from frankenstem.remove_silence_to_beat import remove_silence
 import numpy as np
 from datetime import datetime
 import soundfile as sf
@@ -19,11 +20,12 @@ audio_a, sr = load_audio(AUDIO_PATH_A)
 audio_b, _  = load_audio(AUDIO_PATH_B)
 
 # remove silence from the audio files
-
+clean_a = remove_silence_to_beat(audio_a, sr, BPM)
+clean_b = remove_silence_to_beat(audio_b, sr, BPM)
 
 # Slice each into beat segments (2–4 beat chunks)
-segments_a = slice_into_random_beats(audio_a, sr, BPM)
-segments_b = slice_into_random_beats(audio_b, sr, BPM)
+segments_a = slice_into_random_beats(clean_a, sr, BPM)
+segments_b = slice_into_random_beats(clean_b, sr, BPM)
 
 print(f"{len(segments_a)} segments from Song A")
 print(f"{len(segments_b)} segments from Song B")

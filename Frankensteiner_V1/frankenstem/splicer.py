@@ -9,14 +9,14 @@ def slice_into_random_beats(audio, sr, bpm, min_beats=2, max_beats=4):
     """
 
     tempo, beat_frames = librosa.beat.beat_track(y=audio, sr=sr, bpm=bpm, units = 'frames')
-    beat_samples = librosa.frames_to_samples(beat_frames)
+    beat_boundaries = librosa.frames_to_samples(beat_frames) #an array of sample indices where beats occur
 
     segments = []
     i = 0
-    while i < len(beat_samples) - min_beats:
+    while i < len(beat_boundaries) - min_beats:
         n_beats = random.randint(min_beats, max_beats) # randomly choose number of beats for segment
-        start = beat_samples[i] # start of the segment in the audio file
-        end = beat_samples[min(i + n_beats, len(beat_samples) - 1)] 
+        start = beat_boundaries[i] # start of the segment in the audio file
+        end = beat_boundaries[min(i + n_beats, len(beat_boundaries) - 1)] 
         segment = audio[start:end]
         segments.append(segment) #adds the current segment to the list
         i += n_beats # adds the number of beats to the index to move to the next segment
