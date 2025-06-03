@@ -2,7 +2,7 @@ import librosa
 import numpy as np
 import random 
 
-def splice_into_random_beats(audio, sr, bpm, min_beats=2, max_beats=4):
+def slice_into_random_beats(audio, sr, bpm, min_beats=2, max_beats=4):
     """
     Splice an audio signal into random 2-4 beat segments using beat tracking.
     Returns a list of audio arrays containing the segments

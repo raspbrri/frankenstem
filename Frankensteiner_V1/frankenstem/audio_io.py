@@ -8,4 +8,4 @@ def load_audio(file_path):
     """
 
     audio, sr = librosa.load(file_path, sr=None, mono=True)
-    return audio, sr  
+    return audio, sr
