@@ -1,4 +1,5 @@
 from enum import Enum
+from frankenstem.audio_io import load_audio
 
 class StemType(Enum):
     VOCALS = "Vocals"
@@ -17,6 +18,9 @@ class Stem:
     def load_audio(self): #prevents loading audio multiple times
         if self._audio is None:
             self._audio, self._sr = load_audio(self.filepath)
+
+            if len(self._audio) == 0:
+                raise ValueError(f"Audio file '{self.filepath}' is empty or could not be loaded.")
         return self._audio, self._sr
 
 class Song:

@@ -1,6 +1,6 @@
 import librosa
 import numpy as n
-from frankenstem.remove_silence_to_beat import remove_silence
+from frankenstem.removing_silence import remove_silence
 import random
 
 def slice_into_random_beats(audio, sr, bpm, min_beats=2, max_beats=4):

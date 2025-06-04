@@ -1,5 +1,6 @@
 import re
 from frankenstem.classes import Stem, StemType, Song
+from pathlib import Path
 
 def parse_filename(filename):
     # Expecting format: "Song_Name (StemType).wav"
@@ -12,10 +13,10 @@ def parse_filename(filename):
 
     # Map the raw stem type string to the enum
     stem_map = {
-        "Vocals": StemType.VOCALS,
-        "Drums": StemType.DRUMS,
-        "Bass": StemType.BASS,
-        "Other": StemType.OTHER
+        "vocals": StemType.VOCALS,
+        "drums": StemType.DRUMS,
+        "bass": StemType.BASS,
+        "other": StemType.OTHER
     }
 
     if raw_stem_type not in stem_map:
@@ -29,6 +30,7 @@ def load_songs_from_folder(input_path):
     songs_by_name = {}
 
     for filepath in input_path.glob("*.wav"):
+        print(f"[DEBBUG[ Found .waf file: {filepath.name}")
         try:
             song_name, stem_type = parse_filename(filepath.name)
             stem = Stem(song_name, stem_type, str(filepath))
@@ -41,6 +43,7 @@ def load_songs_from_folder(input_path):
     # make sure that there are at least two distinct songs with stems
     songs = list(songs_by_name.values()) 
     if len(songs) < 2:
+        print(f"[INFO] Loaded songs: {list(songs_by_name.keys())}")
         raise ValueError("At least two distinct songs with stems are required.")
 
     return songs
