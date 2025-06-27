@@ -1,5 +1,5 @@
 from frankenstem.audio_io import load_audio
-from frankenstem.splicer import slice_into_random_beats
+from frankenstem.splicer import slice_into_random_beats, slice_by_transients
 from frankenstem.combiner import combine_segments
 from frankenstem.removing_silence import remove_silence
 from frankenstem.filename_parser import load_wavs_from_folder
@@ -18,7 +18,7 @@ TARGET_DURATION_SECONDS = 20  #******ASK USER +++++
 # load all .wav files from the input folder
 stem_wavs = load_wavs_from_folder(INPUT_PATH)
 
-# stem type choices
+# stem-type choices
 stem_type_key = {
     "V": StemType.VOCALS,
     "B": StemType.BASS,
@@ -26,6 +26,18 @@ stem_type_key = {
     "O": StemType.OTHER
 }
 
+# slice-type choices
+slice_type_key = {
+    "R": slice_into_random_beats,
+    "T": slice_by_transients
+}
+
+slice_params = {
+    slice_into_random_beats: {"bpm": BPM},
+    slice_by_transients: {"bpm":BPM, "delta": 0.01, "min_length_seconds": 0.5}#can be adjusted later to user input for delta
+}
+
+# ########CLEAN UP THIS SECTION FOR USER INPUT BY MOVING IT TO A FUNCTION !!!!!!!!!
 #--- USER INPUT FOR TARGET DURATION ---
 print(f"\n ---- WELCOME TO FRANKENSTEM! ----", end="\n\n")
 while True:
@@ -64,6 +76,17 @@ except KeyError as e:
 print(f"---- Selected stem types: {[t.name for t in selected_stem_types]} ----", end="\n\n")
 
 
+#--- USER INPUT FOR SLICE TYPE ---
+while True:
+    user_input = input("Select slice type:\nRANDOM BEATS = R\nTRANSIENTS = T\n(e.g. 'R'): ").strip().upper()
+    if user_input in slice_type_key:
+        selected_slicing_function = slice_type_key[user_input]
+        break
+    else:
+        print("Please select a valid slice type (R or T).")
+print(f"---- SLICE TYPE: {selected_slicing_function.__name__} ----\n")
+
+
 # --- COLLECT SEGMENTS FROM SELECTED STEMS ---
 all_segments = []
 sr = None  # will be set after first audio load
@@ -73,12 +96,21 @@ for stem_type in selected_stem_types:
         stem = wav.get_stem(stem_type)
         if not stem:
             continue
+
         audio, this_sr = stem.load_audio()
+
         if sr is None:
             sr = this_sr
         elif this_sr != sr:
             raise ValueError(f"Sample rate mismatch in stem: {stem.filepath}")
-        segments = slice_into_random_beats(audio, sr, BPM)
+
+        # Dynamically call the selected slicing function with its params
+        segments = selected_slicing_function(
+            audio,
+            sr,
+            **slice_params[selected_slicing_function]
+        )
+
         all_segments.extend(segments)
 
 if len(all_segments) == 0:
@@ -100,7 +132,6 @@ frankenstem_audio = np.concatenate(selected_segments)
 timestamp = datetime.now().strftime("%Y%m%d_%H%M")
 stem_names = "_".join(stem_type.name.capitalize() for stem_type in selected_stem_types)
 output_file = f"{OUTPUT_PATH}/FRANKENSTEM_{stem_names}_{timestamp}.wav"
-
 
 sf.write(output_file, frankenstem_audio, sr)
 print(f"Saved Frankenstem to {output_file}")

@@ -1,5 +1,5 @@
 import librosa
-import numpy as n
+import numpy as np
 from frankenstem.removing_silence import remove_silence
 import random
 
@@ -28,6 +28,40 @@ def slice_into_random_beats(audio, sr, bpm, min_beats=2, max_beats=4):
 
     return segments
 
+def slice_by_transients(audio, sr, bpm, delta=0.01, min_length_seconds=2.0, hop_length=512, backtrack=True):
+    """
+    Splits audio at transient (onset) points using librosa's onset detection.
+
+    Parameters:
+    - audio: np.ndarray, audio signal
+    - sr: int, sample rate
+    - delta: float, sensitivity for onset detection (lower = more sensitive)
+    - min_length_seconds: float, minimum length of a fragment in seconds
+    - hop_length: int, hop length for analysis
+    - backtrack: bool, adjust onsets backward to local minima for cleaner cuts
+
+    Returns:
+    - segments: List of np.ndarray audio fragments
+    """
+
+    # Detect onsets
+    onset_frames = librosa.onset.onset_detect(y=audio, sr=sr, hop_length=hop_length, backtrack=backtrack, delta=delta)
+    onset_samples = librosa.frames_to_samples(onset_frames, hop_length=hop_length)
+
+    # Ensure the last sample is included
+    onset_samples = np.append(onset_samples, len(audio))
+
+    min_length_samples = int(min_length_seconds * sr)
+    segments = []
+
+    audio = remove_silence(audio, sr, bpm)
+
+    for start, end in zip(onset_samples[:-1], onset_samples[1:]):
+        if (end - start) >= min_length_samples:
+            segment = audio[start:end]
+            segments.append(segment)
+
+    return segments
 
 
 
