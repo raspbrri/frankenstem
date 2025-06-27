@@ -2,66 +2,105 @@ from frankenstem.audio_io import load_audio
 from frankenstem.splicer import slice_into_random_beats
 from frankenstem.combiner import combine_segments
 from frankenstem.removing_silence import remove_silence
-from frankenstem.filename_parser import load_songs_from_folder
+from frankenstem.filename_parser import load_wavs_from_folder
 from frankenstem.classes import StemType, Song
 import soundfile as sf
 from datetime import datetime
 from collections import defaultdict
 import numpy as np
+import random
 
-
-timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-#OUTPUT_PATH = f"output/frankenstem_vocals_{timestamp}.wav"
+INPUT_PATH = "input"
 OUTPUT_PATH = "output"
+BPM = 130
+TARGET_DURATION_SECONDS = 20  #******ASK USER +++++ 
 
-# BPM assumed same for all songs - ADD CODE LATER TO ASK USER FOR BPM
-BPM = 132
+# load all .wav files from the input folder
+stem_wavs = load_wavs_from_folder(INPUT_PATH)
 
-#load audio files from the input folder and collect stem types
-songs = load_songs_from_folder("input")
+# stem type choices
+stem_type_key = {
+    "V": StemType.VOCALS,
+    "B": StemType.BASS,
+    "D": StemType.DRUMS,
+    "O": StemType.OTHER
+}
 
-#dynamically detect stem types from the loaded audio files
-present_stem_types = set()
-for song in songs:
-    present_stem_types.update(song.stems.keys())
+#--- USER INPUT FOR TARGET DURATION ---
+print(f"\n ---- WELCOME TO FRANKENSTEM! ----", end="\n\n")
+while True:
+    user_input = input("Enter target FRANKENSTEM duration in seconds (10-60 seconds, default 20): ") or "20"
+    try:
+        TARGET_DURATION_SECONDS = float(user_input)
+        if 10 <= TARGET_DURATION_SECONDS <= 60:
+            break
+        else:
+            print("Please enter a duration between 10 and 60 seconds.")
+    except ValueError:
+        print("Invalid input. Please enter a valid number in seconds.")
 
-print(f"Detected stem types: {[t.name for t in present_stem_types]}")
+#--- USER INPUT FOR SOURCE BPM ---
+while True:
+    user_input = input("Enter source BPM ")
+    try:
+        BPM = float(user_input)
+        if 20 <= BPM <= 300:
+            break
+        else:
+            print("Please enter a BPM between 20 and 300.")
+    except ValueError:
+        print("Invalid input. Please enter a valid number.")
+print(f"---- Target duration: {TARGET_DURATION_SECONDS} seconds, BPM: {BPM} ----", end="\n\n")
 
-# organise and slice segments
-segments_by_stemtype = defaultdict(list)
+# --- USER INPUT FOR STEM TYPES ---
+frankenstem_type_selection = input("List stem types to combine separated by commas:\nVOCALS = V\nBASS = B\nDRUMS = D\nOTHER = O\n(e.g. 'V,B,O'): ")
+selected_keys = [s.strip().upper() for s in frankenstem_type_selection.split(",")]
 
-# groups present stem objects by their stem type - IMPOORTANT grouping for later combination modes
-for stem_type in present_stem_types:
-    matching_stems = []
-    for song in songs:
-        stem = song.get_stem(stem_type)
-        if stem:
-            matching_stems.append(stem)
+try:
+    selected_stem_types = [stem_type_key[k] for k in selected_keys]
+except KeyError as e:
+    raise ValueError(f"Invalid stem type selected: {e}")
 
-    if len(matching_stems) < 2:
-        print(f"Not enough stems of type {stem_type.name} found. Skipping this stem type.")
-        continue
+print(f"---- Selected stem types: {[t.name for t in selected_stem_types]} ----", end="\n\n")
 
-    for stem in matching_stems:
-        audio, sr = stem.load_audio()
+
+# --- COLLECT SEGMENTS FROM SELECTED STEMS ---
+all_segments = []
+sr = None  # will be set after first audio load
+
+for stem_type in selected_stem_types:
+    for wav in stem_wavs:
+        stem = wav.get_stem(stem_type)
+        if not stem:
+            continue
+        audio, this_sr = stem.load_audio()
+        if sr is None:
+            sr = this_sr
+        elif this_sr != sr:
+            raise ValueError(f"Sample rate mismatch in stem: {stem.filepath}")
         segments = slice_into_random_beats(audio, sr, BPM)
-        print(f"[DEBUG] {stem.filepath} → {len(segments)} segments")
-        segments_by_stemtype[stem_type].append(segments)
+        all_segments.extend(segments)
 
-# combine segments from different stem types.. (array of arrays
+if len(all_segments) == 0:
+    raise ValueError("No valid segments found for selected stem types.")
 
-for stem_type, segment_lists in segments_by_stemtype.items():
-    #for now limited to 2 segment arrays
-    if not segment_lists[0] or not segment_lists[1]:
-        print(f"[SKIP] Not enough segments to combine for {stem_type.name}")
-        continue
-    combined_segments = combine_segments(segment_lists[0], segment_lists[1], sr=sr)
-    # frankenstem = concatentate segments from ^
-    frankenstem_audio = np.concatenate(combined_segments)
+# --- SHUFFLE + SELECT SEGMENTS FOR DESIRED LENGTH ---
+random.shuffle(all_segments)
 
-    # write output to file (prefix 'Frankenstem', suffix timestamp + wav)
+# Estimate number of segments needed --!!!!!!!THIS NEEDS TO BE MADE MORE PRECISE!!!!!!!!!!!!
+beats_per_second = BPM / 60
+seconds_per_segment = 2  # average 2 beats per segment
+estimated_segment_duration = seconds_per_segment / beats_per_second
+num_segments = int(TARGET_DURATION_SECONDS / estimated_segment_duration)
 
-    output_file = f"{OUTPUT_PATH}/frankenstem_{stem_type.name.lower()}_{timestamp}.wav"
-    sf.write(output_file, frankenstem_audio, sr)
-    print(f"Saved frankenstem of type {stem_type.name} to {output_file}")
+selected_segments = all_segments[:num_segments]
 
+# --- RECOMBINE + SAVE ---
+frankenstem_audio = np.concatenate(selected_segments)
+timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+stem_names = "_".join(stem_type.name.capitalize() for stem_type in selected_stem_types)
+output_file = f"{OUTPUT_PATH}/FRANKENSTEM_{stem_names}_{timestamp}.wav"
+
+
+sf.write(output_file, frankenstem_audio, sr)
+print(f"Saved Frankenstem to {output_file}")
