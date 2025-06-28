@@ -28,7 +28,7 @@ def slice_into_random_beats(audio, sr, bpm, min_beats=2, max_beats=4):
 
     return segments
 
-def slice_by_transients(audio, sr, bpm, delta=0.01, min_length_seconds=2.0, hop_length=512, backtrack=True):
+def slice_by_transients(audio, sr, bpm, delta=0.005, min_length_seconds=2.0, hop_length=512, backtrack=True):
     """
     Splits audio at transient (onset) points using librosa's onset detection.
 
