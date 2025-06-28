@@ -30,7 +30,6 @@ def load_wavs_from_folder(input_path):
     songs_by_name = {}
 
     for filepath in input_path.glob("*.wav"):
-        print(f"[DEBBUG[ Found .wav file: {filepath.name}")
         try:
             song_name, stem_type = parse_filename(filepath.name)
             stem = Stem(song_name, stem_type, str(filepath))

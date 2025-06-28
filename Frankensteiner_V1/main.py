@@ -11,11 +11,13 @@ from datetime import datetime
 import numpy as np
 import random
 import os
+import time
 
 INPUT_PATH = "input"
 OUTPUT_PATH = "output"
 
 def generate_frankenstem(config: FrankenstemConfig):
+    start_time = time.time()##DEBUG
     TARGET_DURATION_SECONDS = config.target_duration
     BPM = config.bpm
     selected_stem_types = config.selected_stem_types
@@ -57,32 +59,50 @@ def generate_frankenstem(config: FrankenstemConfig):
 
             all_segments.extend(segments)
 
+    print(f"[PROFILE] Loading & slicing took: {time.time() - start_time:.2f}s") ##DEBUG
+    slice_time = time.time() ##DEBUG
+
     if len(all_segments) == 0:
         raise ValueError("No valid segments found for selected stem types.")
 
     random.shuffle(all_segments)
 
-    ### NEED TO FIX THIS SECTION TO PROPERLY ESTIMATE SEGMENT COUNT BASED ON BPM AND TARGET DURATION
-    beats_per_second = BPM / 60
-    seconds_per_segment = 2  # average 2 beats per segment
-    estimated_segment_duration = seconds_per_segment / beats_per_second
-    num_segments = int(TARGET_DURATION_SECONDS / estimated_segment_duration)
+    # Select segments up to exact target duration
+    selected_segments = []
+    cumulative_samples = 0
+    target_samples = int(TARGET_DURATION_SECONDS * sr)
 
-    selected_segments = all_segments[:num_segments]
+    for segment in all_segments:
+        segment_length = len(segment)
+        if cumulative_samples + segment_length > target_samples:
+            remaining_samples = target_samples - cumulative_samples
+            if remaining_samples > 0:
+                selected_segments.append(segment[:remaining_samples])
+            break
+        selected_segments.append(segment)
+        cumulative_samples += segment_length
+
+    print(f"[PROFILE] Segment selection took: {time.time() - slice_time:.2f}s") ##DEBUG
+    concat_time = time.time() ##DEBUG
 
     frankenstem_audio = np.concatenate(selected_segments)
+    print(f"[PROFILE] Concatenation took: {time.time() - concat_time:.2f}s") ###DEBUG
+    print(f"[PROFILE] Total Frankenstem generation time: {time.time() - start_time:.2f}s") ##DEBUG
     timestamp = datetime.now().strftime("%Y%m%d_%H%M")
     stem_names = "_".join(stem_type.name.capitalize() for stem_type in selected_stem_types)
     output_file = f"{OUTPUT_PATH}/FRANKENSTEM_{stem_names}_{timestamp}.wav"
+
+    print(f"[INFO] Frankenstem length: {len(frankenstem_audio)/sr:.3f}s "
+    f"(target: {TARGET_DURATION_SECONDS}s, segments used: {len(selected_segments)})")
 
     sf.write(output_file, frankenstem_audio, sr)
     print(f"Saved Frankenstem to {output_file}")
 
 if __name__ == "__main__":
     config = FrankenstemConfig(
-        target_duration=20,  # seconds
+        target_duration=10,  # seconds
         bpm=130,
-        selected_stem_types=[StemType.VOCALS, StemType.OTHER],
-        selected_slicing_function=slice_into_random_beats
+        selected_stem_types=[StemType.DRUMS, StemType.BASS],
+        selected_slicing_function=slice_by_transients
     )
     generate_frankenstem(config)
