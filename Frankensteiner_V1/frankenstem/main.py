@@ -4,89 +4,85 @@ from frankenstem.combiner import combine_segments
 from frankenstem.removing_silence import remove_silence
 from frankenstem.filename_parser import load_wavs_from_folder
 from frankenstem.classes import StemType, Song
+from frankenstem.config import FrankenstemConfig
+
 import soundfile as sf
 from datetime import datetime
-from collections import defaultdict
 import numpy as np
 import random
-from frankenstem.user_input import get_user_inputs
+import os
 
 INPUT_PATH = "input"
 OUTPUT_PATH = "output"
 
-# load all .wav files from the input folder
-stem_wavs = load_wavs_from_folder(INPUT_PATH)
+def generate_frankenstem(config: FrankenstemConfig):
+    TARGET_DURATION_SECONDS = config.target_duration
+    BPM = config.bpm
+    selected_stem_types = config.selected_stem_types
+    selected_slicing_function = config.selected_slicing_function
 
-# stem-type choices
-stem_type_key = {
-    "V": StemType.VOCALS,
-    "B": StemType.BASS,
-    "D": StemType.DRUMS,
-    "O": StemType.OTHER
-}
+    if not os.path.exists(INPUT_PATH):
+        raise FileNotFoundError(f"Input path '{INPUT_PATH}' does not exist.")
+    if not os.path.exists(OUTPUT_PATH):
+        os.makedirs(OUTPUT_PATH)
 
-# slice-type choices
-slice_type_key = {
-    "R": slice_into_random_beats,
-    "T": slice_by_transients
-}
+    stem_wavs = load_wavs_from_folder(INPUT_PATH)
 
-print(f"\n ---- WELCOME TO FRANKENSTEM! ----", end="\n\n")
+    slice_params = {
+        slice_into_random_beats: {"bpm": BPM},
+        slice_by_transients: {"bpm": BPM, "delta": 0.01, "min_length_seconds": 0.5}
+    }
 
-# --- GET USER INPUTS ---
-# Get target duration, BPM, stem types, and slicing function from user
-TARGET_DURATION_SECONDS, BPM, selected_stem_types, selected_slicing_function = get_user_inputs()
+    all_segments = []
+    sr = None  # will be set after first audio load
 
-slice_params = {
-    slice_into_random_beats: {"bpm": BPM},
-    slice_by_transients: {"bpm":BPM, "delta": 0.01, "min_length_seconds": 0.5}#can be adjusted later to user input for delta
-}
+    for stem_type in selected_stem_types:
+        for wav in stem_wavs:
+            stem = wav.get_stem(stem_type)
+            if not stem:
+                continue
 
-# --- COLLECT SEGMENTS FROM SELECTED STEMS ---
-all_segments = []
-sr = None  # will be set after first audio load
+            audio, this_sr = stem.load_audio()
 
-for stem_type in selected_stem_types:
-    for wav in stem_wavs:
-        stem = wav.get_stem(stem_type)
-        if not stem:
-            continue
+            if sr is None:
+                sr = this_sr
+            elif this_sr != sr:
+                raise ValueError(f"Sample rate mismatch in stem: {stem.filepath}")
 
-        audio, this_sr = stem.load_audio()
+            segments = selected_slicing_function(
+                audio,
+                sr,
+                **slice_params[selected_slicing_function]
+            )
 
-        if sr is None:
-            sr = this_sr
-        elif this_sr != sr:
-            raise ValueError(f"Sample rate mismatch in stem: {stem.filepath}")
+            all_segments.extend(segments)
 
-        # Dynamically call the selected slicing function with its params
-        segments = selected_slicing_function(
-            audio,
-            sr,
-            **slice_params[selected_slicing_function]
-        )
+    if len(all_segments) == 0:
+        raise ValueError("No valid segments found for selected stem types.")
 
-        all_segments.extend(segments)
+    random.shuffle(all_segments)
 
-if len(all_segments) == 0:
-    raise ValueError("No valid segments found for selected stem types.")
+    ### NEED TO FIX THIS SECTION TO PROPERLY ESTIMATE SEGMENT COUNT BASED ON BPM AND TARGET DURATION
+    beats_per_second = BPM / 60
+    seconds_per_segment = 2  # average 2 beats per segment
+    estimated_segment_duration = seconds_per_segment / beats_per_second
+    num_segments = int(TARGET_DURATION_SECONDS / estimated_segment_duration)
 
-# --- SHUFFLE + SELECT SEGMENTS FOR DESIRED LENGTH ---
-random.shuffle(all_segments)
+    selected_segments = all_segments[:num_segments]
 
-# Estimate number of segments needed --!!!!!!!THIS NEEDS TO BE MADE MORE PRECISE!!!!!!!!!!!!
-beats_per_second = BPM / 60
-seconds_per_segment = 2  # average 2 beats per segment
-estimated_segment_duration = seconds_per_segment / beats_per_second
-num_segments = int(TARGET_DURATION_SECONDS / estimated_segment_duration)
+    frankenstem_audio = np.concatenate(selected_segments)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+    stem_names = "_".join(stem_type.name.capitalize() for stem_type in selected_stem_types)
+    output_file = f"{OUTPUT_PATH}/FRANKENSTEM_{stem_names}_{timestamp}.wav"
 
-selected_segments = all_segments[:num_segments]
+    sf.write(output_file, frankenstem_audio, sr)
+    print(f"Saved Frankenstem to {output_file}")
 
-# --- RECOMBINE + SAVE ---
-frankenstem_audio = np.concatenate(selected_segments)
-timestamp = datetime.now().strftime("%Y%m%d_%H%M")
-stem_names = "_".join(stem_type.name.capitalize() for stem_type in selected_stem_types)
-output_file = f"{OUTPUT_PATH}/FRANKENSTEM_{stem_names}_{timestamp}.wav"
-
-sf.write(output_file, frankenstem_audio, sr)
-print(f"Saved Frankenstem to {output_file}")
+if __name__ == "__main__":
+    config = FrankenstemConfig(
+        target_duration=20,  # seconds
+        bpm=130,
+        selected_stem_types=[StemType.VOCALS, StemType.OTHER],
+        selected_slicing_function=slice_into_random_beats
+    )
+    generate_frankenstem(config)
