@@ -3,7 +3,7 @@ import numpy as np
 from frankenstem.removing_silence import remove_silence
 import random
 
-def slice_into_random_beats(audio, sr, bpm, min_beats=1, max_beats=2):
+def slice_into_random_beats(audio, sr, bpm, min_beats=1, max_beats=4):
     """
     Splice an audio signal into random 2-4 beat segments using beat tracking.
     Returns a list of audio arrays containing the segments
@@ -28,14 +28,14 @@ def slice_into_random_beats(audio, sr, bpm, min_beats=1, max_beats=2):
 
     return segments
 
-def slice_by_transients(audio, sr, bpm, delta=0.01, min_length_seconds=2.0, hop_length=512, backtrack=True):
+def slice_by_transients(audio, sr, bpm, delta=0.05, min_length_seconds=0.5, hop_length=512, backtrack=True):
     """
     Splits audio at transient (onset) points using librosa's onset detection.
 
     Parameters:
     - audio: np.ndarray, audio signal
     - sr: int, sample rate
-    - delta: float, sensitivity for onset detection (lower = more sensitive)
+    - delta: float, sensitivity for onset detection (lower = more sensitive) - good values are between 0.01 and 0.1
     - min_length_seconds: float, minimum length of a fragment in seconds
     - hop_length: int, hop length for analysis
     - backtrack: bool, adjust onsets backward to local minima for cleaner cuts

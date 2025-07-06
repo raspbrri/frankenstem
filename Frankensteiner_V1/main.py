@@ -32,7 +32,7 @@ def generate_frankenstem(config: FrankenstemConfig):
 
     slice_params = {
         slice_into_random_beats: {"bpm": BPM},
-        slice_by_transients: {"bpm": BPM, "delta": 0.01, "min_length_seconds": 0.5}
+        slice_by_transients: {"bpm": BPM, "delta": 0.5, "min_length_seconds": 0.5}
     }
 
     all_segments = []
@@ -88,9 +88,19 @@ def generate_frankenstem(config: FrankenstemConfig):
     frankenstem_audio = np.concatenate(selected_segments)
     print(f"[PROFILE] Concatenation took: {time.time() - concat_time:.2f}s") ###DEBUG
     print(f"[PROFILE] Total Frankenstem generation time: {time.time() - start_time:.2f}s") ##DEBUG
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+    timestamp = datetime.now().strftime("%m%d_%H%M")
     stem_names = "_".join(stem_type.name.capitalize() for stem_type in selected_stem_types)
-    output_file = f"{OUTPUT_PATH}/FRANKENSTEM_{stem_names}_{timestamp}.wav"
+    slice_type_name = (
+        "Transient" if selected_slicing_function == slice_by_transients else
+        "Beat" if selected_slicing_function == slice_into_random_beats else
+        "UnknownSliceType"
+    )
+    duration_str = f"{int(TARGET_DURATION_SECONDS)}s"
+
+    output_file = (
+        f"{OUTPUT_PATH}/{stem_names}_{slice_type_name}_{duration_str}_{timestamp}.wav"
+    )
+
 
     print(f"[INFO] Frankenstem length: {len(frankenstem_audio)/sr:.3f}s "
     f"(target: {TARGET_DURATION_SECONDS}s, segments used: {len(selected_segments)})")
@@ -100,8 +110,8 @@ def generate_frankenstem(config: FrankenstemConfig):
 
 if __name__ == "__main__":
     config = FrankenstemConfig(
-        target_duration=10,  # seconds
-        bpm=130,
+        target_duration=30,  # seconds
+        bpm=160,
         selected_stem_types=[StemType.DRUMS, StemType.BASS],
         selected_slicing_function=slice_by_transients
     )
