@@ -3,7 +3,7 @@ import numpy as np
 from frankenstem.removing_silence import remove_silence
 import random
 
-def slice_into_random_beats(audio, sr, bpm, min_beats=1, max_beats=4):
+def slice_into_random_beats(audio, sr, bpm, min_beats=1, max_beats=2):
     """
     Splice an audio signal into random beat-length segments using beat tracking.
     Works with mono or stereo, returns stereo if input is stereo.
