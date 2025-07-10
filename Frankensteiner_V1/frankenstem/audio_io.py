@@ -6,5 +6,5 @@ def load_audio(file_path):
 
     Returns: (audio_array, sample_rate)
     """
-    audio, sr = librosa.load(file_path, sr=None, mono=True)
+    audio, sr = librosa.load(file_path, sr=None, mono=False)
     return audio, sr

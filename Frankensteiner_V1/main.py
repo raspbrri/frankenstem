@@ -73,19 +73,23 @@ def generate_frankenstem(config: FrankenstemConfig):
     target_samples = int(TARGET_DURATION_SECONDS * sr)
 
     for segment in all_segments:
-        segment_length = len(segment)
+        segment_length = segment.shape[-1]  # handles mono or stereo consistently
         if cumulative_samples + segment_length > target_samples:
             remaining_samples = target_samples - cumulative_samples
             if remaining_samples > 0:
-                selected_segments.append(segment[:remaining_samples])
+                if segment.ndim == 2:
+                    selected_segments.append(segment[:, :remaining_samples])
+                else:
+                    selected_segments.append(segment[:remaining_samples])
             break
         selected_segments.append(segment)
         cumulative_samples += segment_length
 
+
     print(f"[PROFILE] Segment selection took: {time.time() - slice_time:.2f}s") ##DEBUG
     concat_time = time.time() ##DEBUG
 
-    frankenstem_audio = np.concatenate(selected_segments)
+    frankenstem_audio = np.concatenate(selected_segments, axis=1 if selected_segments[0].ndim == 2 else 0)
     print(f"[PROFILE] Concatenation took: {time.time() - concat_time:.2f}s") ###DEBUG
     print(f"[PROFILE] Total Frankenstem generation time: {time.time() - start_time:.2f}s") ##DEBUG
     timestamp = datetime.now().strftime("%m%d_%H%M")
@@ -105,7 +109,7 @@ def generate_frankenstem(config: FrankenstemConfig):
     print(f"[INFO] Frankenstem length: {len(frankenstem_audio)/sr:.3f}s "
     f"(target: {TARGET_DURATION_SECONDS}s, segments used: {len(selected_segments)})")
 
-    sf.write(output_file, frankenstem_audio, sr)
+    sf.write(output_file, frankenstem_audio.T, sr)
     print(f"Saved Frankenstem to {output_file}")
 
 if __name__ == "__main__":

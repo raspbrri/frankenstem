@@ -5,63 +5,79 @@ import random
 
 def slice_into_random_beats(audio, sr, bpm, min_beats=1, max_beats=4):
     """
-    Splice an audio signal into random 2-4 beat segments using beat tracking.
-    Returns a list of audio arrays containing the segments
+    Splice an audio signal into random beat-length segments using beat tracking.
+    Works with mono or stereo, returns stereo if input is stereo.
     """
 
-    tempo, beat_frames = librosa.beat.beat_track(y=audio, sr=sr, bpm=bpm, units = 'frames')
-    beat_boundaries = librosa.frames_to_samples(beat_frames) #an array of sample indices where beats occur
+    # Remove silence BEFORE analysis for stability
+    audio = remove_silence(audio, sr, bpm)
+
+    # If stereo, create mono mix for beat analysis
+    if audio.ndim == 2:
+        analysis_audio = np.mean(audio, axis=0)
+    else:
+        analysis_audio = audio
+
+    tempo, beat_frames = librosa.beat.beat_track(y=analysis_audio, sr=sr, bpm=bpm, units='frames')
+    beat_boundaries = librosa.frames_to_samples(beat_frames)
 
     segments = []
     i = 0
 
-    # remove silence from the audio signal
-    audio = remove_silence(audio, sr, bpm)
-
     while i < len(beat_boundaries) - min_beats:
-        n_beats = random.randint(min_beats, max_beats) # randomly choose number of beats for segment
-        start = beat_boundaries[i] # start of the segment in the audio file
-        end = beat_boundaries[min(i + n_beats, len(beat_boundaries) - 1)] 
-        segment = audio[start:end]
-        segments.append(segment) #adds the current segment to the list
-        i += n_beats # adds the number of beats to the index to move to the next segment
+        n_beats = random.randint(min_beats, max_beats)
+        start = beat_boundaries[i]
+        end = beat_boundaries[min(i + n_beats, len(beat_boundaries) - 1)]
+
+        if audio.ndim == 2:
+            segment = audio[:, start:end]  # preserve stereo
+        else:
+            segment = audio[start:end]
+
+        segments.append(segment)
+        i += n_beats
 
     return segments
+
 
 def slice_by_transients(audio, sr, bpm, delta=0.05, min_length_seconds=0.5, hop_length=512, backtrack=True):
     """
     Splits audio at transient (onset) points using librosa's onset detection.
-
-    Parameters:
-    - audio: np.ndarray, audio signal
-    - sr: int, sample rate
-    - delta: float, sensitivity for onset detection (lower = more sensitive) - good values are between 0.01 and 0.1
-    - min_length_seconds: float, minimum length of a fragment in seconds
-    - hop_length: int, hop length for analysis
-    - backtrack: bool, adjust onsets backward to local minima for cleaner cuts
-
-    Returns:
-    - segments: List of np.ndarray audio fragments
+    Works with mono or stereo, returns stereo if input is stereo.
     """
 
-    # Detect onsets
-    onset_frames = librosa.onset.onset_detect(y=audio, sr=sr, hop_length=hop_length, backtrack=backtrack, delta=delta)
-    onset_samples = librosa.frames_to_samples(onset_frames, hop_length=hop_length)
+    # Remove silence
+    audio = remove_silence(audio, sr, bpm)
 
-    # Ensure the last sample is included
-    onset_samples = np.append(onset_samples, len(audio))
+    # If stereo, create mono mix for onset detection
+    if audio.ndim == 2:
+        analysis_audio = np.mean(audio, axis=0)
+    else:
+        analysis_audio = audio
+
+    onset_frames = librosa.onset.onset_detect(
+        y=analysis_audio,
+        sr=sr,
+        hop_length=hop_length,
+        backtrack=backtrack,
+        delta=delta
+    )
+    onset_samples = librosa.frames_to_samples(onset_frames, hop_length=hop_length)
+    onset_samples = np.append(onset_samples, len(analysis_audio))
 
     min_length_samples = int(min_length_seconds * sr)
     segments = []
 
-    audio = remove_silence(audio, sr, bpm)
-
     for start, end in zip(onset_samples[:-1], onset_samples[1:]):
         if (end - start) >= min_length_samples:
-            segment = audio[start:end]
+            if audio.ndim == 2:
+                segment = audio[:, start:end]  # preserve stereo
+            else:
+                segment = audio[start:end]
             segments.append(segment)
 
     return segments
+
 
 
 
