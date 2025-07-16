@@ -34,9 +34,18 @@ def generate_frankenstem(config: FrankenstemConfig):
 
 
     slice_params = {
-        slice_into_random_beats: {"bpm": BPM},
-        slice_by_transients: {"bpm": BPM, "delta": 0.5, "min_length_seconds": 0.5}
+    slice_into_random_beats: {
+        "bpm": BPM,
+        "min_beats": config.min_beats,
+        "max_beats": config.max_beats
+    },
+    slice_by_transients: {
+        "bpm": BPM,
+        "delta": 0.5,
+        "min_length_seconds": 0.5
     }
+}
+
 
     all_segments = []
     sr = None  # will be set after first audio load
@@ -88,47 +97,49 @@ def generate_frankenstem(config: FrankenstemConfig):
         selected_segments.append(segment)
         cumulative_samples += segment_length
 
-
     print(f"[PROFILE] Segment selection took: {time.time() - slice_time:.2f}s") ##DEBUG
     concat_time = time.time() ##DEBUG
 
-    print(f"[DEBUG] Selected segments count: {len(selected_segments)}")
-    for i, seg in enumerate(selected_segments):
-        print(f"[DEBUG] Segment {i} shape: {seg.shape}, dtype: {seg.dtype}, min: {seg.min() if seg.size else 'empty'}, max: {seg.max() if seg.size else 'empty'}")
+    # exporting fragments individually
+    if config.export_fragments_individually:
+        fragment_folder = os.path.join(OUTPUT_PATH, f"fragments_{datetime.now().strftime('%m%d_%H%M')}")
+        os.makedirs(fragment_folder, exist_ok=True)
 
+        for i, seg in enumerate(selected_segments):
+            out_path = os.path.join(fragment_folder, f"fragment_{i+1:03d}.wav")
+            sf.write(out_path, seg.T if seg.ndim == 2 else seg, sr)
 
-    frankenstem_audio = np.concatenate(selected_segments, axis=1 if selected_segments[0].ndim == 2 else 0)
-    print(f"[PROFILE] Concatenation took: {time.time() - concat_time:.2f}s") ###DEBUG
-    print(f"[PROFILE] Total Frankenstem generation time: {time.time() - start_time:.2f}s") ##DEBUG
-    timestamp = datetime.now().strftime("%m%d_%H%M")
-    stem_names = "_".join(stem_type.name.capitalize() for stem_type in selected_stem_types)
-    slice_type_name = (
-        "Transient" if selected_slicing_function == slice_by_transients else
-        "Beat" if selected_slicing_function == slice_into_random_beats else
-        "UnknownSliceType"
-    )
-    duration_str = f"{int(TARGET_DURATION_SECONDS)}s"
+        print(f"[INFO] Saved {len(selected_segments)} fragments to {fragment_folder}")
+    else: #exporting as a single concatenated Frankenstem
+        frankenstem_audio = np.concatenate(selected_segments, axis=1 if selected_segments[0].ndim == 2 else 0)
+        frankenstem_audio = frankenstem_audio.T  # (N, 2)
 
-    output_file = (
-        f"{OUTPUT_PATH}/{stem_names}_{slice_type_name}_{duration_str}_{timestamp}.wav"
-    )
+        # Filename logic
+        timestamp = datetime.now().strftime("%m%d_%H%M")
+        stem_names = "_".join(stem_type.name.capitalize() for stem_type in selected_stem_types)
+        slice_type_name = (
+            "Transient" if selected_slicing_function == slice_by_transients else
+            "Beat" if selected_slicing_function == slice_into_random_beats else
+            "UnknownSliceType"
+        )
+        duration_str = f"{int(TARGET_DURATION_SECONDS)}s"
 
+        output_file = f"{OUTPUT_PATH}/{stem_names}_{slice_type_name}_{duration_str}_{timestamp}.wav"
 
-    # Transpose to correct shape for stereo output
-    frankenstem_audio = frankenstem_audio.T  # (N, 2)
-
-    print(f"[INFO] Frankenstem length: {len(frankenstem_audio)/sr:.3f}s "
-        f"(target: {TARGET_DURATION_SECONDS}s, segments used: {len(selected_segments)})")
-
-    sf.write(output_file, frankenstem_audio, sr)
-    print(f"Saved Frankenstem to {output_file}")
+        sf.write(output_file, frankenstem_audio, sr)
+        print(f"Saved Frankenstem to {output_file}")
 
 
 if __name__ == "__main__":
     config = FrankenstemConfig(
-        target_duration=30,  # seconds
+        target_duration=10,  # seconds
         bpm=160,
-        selected_stem_types=[StemType.DRUMS, StemType.BASS],
-        selected_slicing_function=slice_by_transients
+        selected_stem_types=[StemType.VOCALS, StemType.DRUMS],
+        selected_slicing_function=slice_into_random_beats, # slice_by_transients, or slice_into_random_beats
+        min_beats=2, # make sure this is less than max_beats
+        max_beats=4,
+        export_fragments_individually=True
+
     )
     generate_frankenstem(config)
+
