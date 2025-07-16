@@ -30,6 +30,9 @@ def generate_frankenstem(config: FrankenstemConfig):
 
     stem_wavs = load_wavs_from_folder(INPUT_PATH)
 
+    print(f"[DEBUG] Number of Songs loaded: {len(stem_wavs)}")
+
+
     slice_params = {
         slice_into_random_beats: {"bpm": BPM},
         slice_by_transients: {"bpm": BPM, "delta": 0.5, "min_length_seconds": 0.5}
@@ -89,6 +92,11 @@ def generate_frankenstem(config: FrankenstemConfig):
     print(f"[PROFILE] Segment selection took: {time.time() - slice_time:.2f}s") ##DEBUG
     concat_time = time.time() ##DEBUG
 
+    print(f"[DEBUG] Selected segments count: {len(selected_segments)}")
+    for i, seg in enumerate(selected_segments):
+        print(f"[DEBUG] Segment {i} shape: {seg.shape}, dtype: {seg.dtype}, min: {seg.min() if seg.size else 'empty'}, max: {seg.max() if seg.size else 'empty'}")
+
+
     frankenstem_audio = np.concatenate(selected_segments, axis=1 if selected_segments[0].ndim == 2 else 0)
     print(f"[PROFILE] Concatenation took: {time.time() - concat_time:.2f}s") ###DEBUG
     print(f"[PROFILE] Total Frankenstem generation time: {time.time() - start_time:.2f}s") ##DEBUG
@@ -106,11 +114,15 @@ def generate_frankenstem(config: FrankenstemConfig):
     )
 
 
-    print(f"[INFO] Frankenstem length: {len(frankenstem_audio)/sr:.3f}s "
-    f"(target: {TARGET_DURATION_SECONDS}s, segments used: {len(selected_segments)})")
+    # Transpose to correct shape for stereo output
+    frankenstem_audio = frankenstem_audio.T  # (N, 2)
 
-    sf.write(output_file, frankenstem_audio.T, sr)
+    print(f"[INFO] Frankenstem length: {len(frankenstem_audio)/sr:.3f}s "
+        f"(target: {TARGET_DURATION_SECONDS}s, segments used: {len(selected_segments)})")
+
+    sf.write(output_file, frankenstem_audio, sr)
     print(f"Saved Frankenstem to {output_file}")
+
 
 if __name__ == "__main__":
     config = FrankenstemConfig(

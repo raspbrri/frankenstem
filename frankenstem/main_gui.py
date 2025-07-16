@@ -2,7 +2,7 @@ import PySimpleGUI as sg
 from frankenstem.classes import StemType
 from frankenstem.splicer import slice_into_random_beats, slice_by_transients
 from frankenstem.config import FrankenstemConfig
-from main import generate_frankenstem
+from frankenstem.main import generate_frankenstem
 
 def main():
     sg.theme('DarkTeal2')
