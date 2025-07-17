@@ -5,6 +5,8 @@ from frankenstem.removing_silence import remove_silence
 from frankenstem.filename_parser import load_wavs_from_folder
 from frankenstem.classes import StemType, Song
 from frankenstem.config import FrankenstemConfig
+from frankenstem.energy_filter import filter_segments_by_energy
+
 
 import soundfile as sf
 from datetime import datetime
@@ -79,6 +81,13 @@ def generate_frankenstem(config: FrankenstemConfig):
 
     random.shuffle(all_segments)
 
+    if config.filter_by_energy:
+        all_segments = filter_segments_by_energy(
+        segments=all_segments,
+        target=config.energy_target
+    )
+
+
     # Select segments up to exact target duration
     selected_segments = []
     cumulative_samples = 0
@@ -134,11 +143,13 @@ if __name__ == "__main__":
     config = FrankenstemConfig(
         target_duration=10,  # seconds
         bpm=160,
-        selected_stem_types=[StemType.VOCALS, StemType.DRUMS],
+        selected_stem_types=[StemType.VOCALS, StemType.OTHER],
         selected_slicing_function=slice_into_random_beats, # slice_by_transients, or slice_into_random_beats
         min_beats=2, # make sure this is less than max_beats
         max_beats=4,
-        export_fragments_individually=True
+        export_fragments_individually=False,
+        filter_by_energy=True,
+        energy_target="medium" #very_low, low, medium, or high
 
     )
     generate_frankenstem(config)
