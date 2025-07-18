@@ -1,6 +1,5 @@
 import numpy as np
 import librosa
-import matplotlib.pyplot as plt
 
 def compute_energy(audio):
     """
