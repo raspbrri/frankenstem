@@ -15,22 +15,19 @@ import random
 import os
 import time
 
-INPUT_PATH = "input"
-OUTPUT_PATH = "output"
-
-def generate_frankenstem(config: FrankenstemConfig):
+def generate_frankenstem(config: FrankenstemConfig, input_path="input", output_path="output"):
     start_time = time.time()##DEBUG
     TARGET_DURATION_SECONDS = config.target_duration
     BPM = config.bpm
     selected_stem_types = config.selected_stem_types
     selected_slicing_function = config.selected_slicing_function
 
-    if not os.path.exists(INPUT_PATH):
-        raise FileNotFoundError(f"Input path '{INPUT_PATH}' does not exist.")
-    if not os.path.exists(OUTPUT_PATH):
-        os.makedirs(OUTPUT_PATH)
+    if not os.path.exists(input_path):
+        raise FileNotFoundError(f"Input path '{input_path}' does not exist.")
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
 
-    stem_wavs = load_wavs_from_folder(INPUT_PATH)
+    stem_wavs = load_wavs_from_folder(input_path)
 
     print(f"[DEBUG] Number of Songs loaded: {len(stem_wavs)}")
 
@@ -111,7 +108,7 @@ def generate_frankenstem(config: FrankenstemConfig):
 
     # exporting fragments individually
     if config.export_fragments_individually:
-        fragment_folder = os.path.join(OUTPUT_PATH, f"fragments_{datetime.now().strftime('%m%d_%H%M')}")
+        fragment_folder = os.path.join(output_path, f"fragments_{datetime.now().strftime('%m%d_%H%M')}")
         os.makedirs(fragment_folder, exist_ok=True)
 
         for i, seg in enumerate(selected_segments):
@@ -133,7 +130,7 @@ def generate_frankenstem(config: FrankenstemConfig):
         )
         duration_str = f"{int(TARGET_DURATION_SECONDS)}s"
 
-        output_file = f"{OUTPUT_PATH}/{stem_names}_{slice_type_name}_{duration_str}_{timestamp}.wav"
+        output_file = f"{output_path}/{stem_names}_{slice_type_name}_{duration_str}_{timestamp}.wav"
 
         sf.write(output_file, frankenstem_audio, sr)
         print(f"Saved Frankenstem to {output_file}")

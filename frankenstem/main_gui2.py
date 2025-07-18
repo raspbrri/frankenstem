@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, scrolledtext, messagebox
-
+from tkinter import filedialog
+import os
 
 from frankenstem.classes import StemType
 from frankenstem.splicer import slice_into_random_beats, slice_by_transients
@@ -27,15 +28,29 @@ class FrankenstemGUI(tk.Tk):
 
     def create_widgets(self):
         font_code = ("Courier New", 12)
-        font_bold = ("Courier New", 16, "bold")
+        font_bold = ("Courier New", 30, "bold")
+    
+        tk.Label(self, text="FRANKENSTEM >:D", font=font_bold).pack(pady=(0, 10))
 
+        # Input folder selector
+        input_frame = tk.Frame(self)
+        input_frame.pack(pady=(10, 0))
+        tk.Label(input_frame, text="Input Folder:", font=font_code).pack(side='left', padx=(0, 5))
+        self.input_path_var = tk.StringVar()
+        tk.Entry(input_frame, textvariable=self.input_path_var, width=60, font=font_code).pack(side='left')
+        tk.Button(input_frame, text="Browse", font=font_code, command=self.select_input_folder).pack(side='left', padx=5)
 
-        tk.Label(self, text="FRANKENSTEM Generator", font=font_bold).pack(pady=(0, 10))
-
+        # Output folder selector
+        output_frame = tk.Frame(self)
+        output_frame.pack(pady=(5, 0))
+        tk.Label(output_frame, text="Output Folder:", font=font_code).pack(side='left', padx=(0, 5))
+        self.output_path_var = tk.StringVar()
+        tk.Entry(output_frame, textvariable=self.output_path_var, width=60, font=font_code).pack(side='left')
+        tk.Button(output_frame, text="Browse", font=font_code, command=self.select_output_folder).pack(side='left', padx=5)
 
         # BPM and Duration Inputs
         entry_frame = tk.Frame(self)
-        entry_frame.pack(pady=5)
+        entry_frame.pack(pady=10)
         tk.Label(entry_frame, text="BPM:", font=font_code).grid(row=0, column=0, sticky='e')
         self.bpm_entry = tk.Entry(entry_frame, font=font_code)
         self.bpm_entry.insert(0, "160")
@@ -55,6 +70,7 @@ class FrankenstemGUI(tk.Tk):
             var = tk.BooleanVar()
             tk.Checkbutton(self, text=stem.name.capitalize(), variable=var, font=font_code).pack(anchor='w')
             self.stem_vars[stem] = var
+
 
 
         # Slicing Method Dropdown
@@ -104,12 +120,30 @@ class FrankenstemGUI(tk.Tk):
         self.output.insert(tk.END, message + '\n')
         self.output.see(tk.END)
 
+    def select_input_folder(self):
+        folder = filedialog.askdirectory()
+        if folder:
+            self.input_path_var.set(folder)
+
+    def select_output_folder(self):
+        folder = filedialog.askdirectory()
+        if folder:
+            self.output_path_var.set(folder)
 
     def run_generation(self):
         try:
             bpm = int(self.bpm_entry.get())
             duration = float(self.duration_entry.get())
 
+            input_path = self.input_path_var.get()
+            output_path = self.output_path_var.get()
+
+            if not os.path.isdir(input_path):
+                self.log("[ERROR] Input folder is invalid or not selected.")
+                return
+            if not os.path.isdir(output_path):
+                self.log("[ERROR] Output folder is invalid or not selected.")
+                return
 
             selected_stems = [stem for stem, var in self.stem_vars.items() if var.get()]
             if not selected_stems:
@@ -146,7 +180,7 @@ class FrankenstemGUI(tk.Tk):
                      f"Stems={[s.name for s in selected_stems]}, Slicer={self.slicer_combo.get()}")
 
 
-            generate_frankenstem(config)
+            generate_frankenstem(config, input_path=input_path, output_path=output_path)
 
 
             self.log("[INFO] Frankenstem generation complete.\n")
