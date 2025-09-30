@@ -10,7 +10,7 @@ Start with a beat range of 1-2 beats, with all stem types selected (no energy fi
 You can experiment with setting the BPM to x2 (or more) the original BPM for shorter fragments. 
 
 # Features 
-- *Stem support*: works with vocals, drums, bass, and other instrument stems (as per [Ultimate Vocal Remover](https://ultimatevocalremover.com/) (HCUS model) and Logic Pro X stem-splitter).
+- *Stem support*: works with vocals, drums, bass, and other instrument stems (as per [Ultimate Vocal Remover](https://ultimatevocalremover.com/) (htdemucs model) and Logic Pro X stem-splitter).
 - *Random beat-length splicing* (configurable min/max beats)
 - *Transient-based slicing* (onset detection)
 - *Silence removal*: removes silent sections before slicing for cleaner results.
