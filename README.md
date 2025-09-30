@@ -2,7 +2,14 @@
 **Frankenstem** is an experimental audio tool for randomly fragmenting and recombining stems into new 'frankensteined' audio files, used for sampling in music production. 
 It’s designed for musicians, producers, and artists interested in playful recombination, post-authorship, and generative sound processes.
 
-#Features 
+Frankenstem is designed to be used for songs that are in **the same BPM**. For best results, normalise BPM of songs prior to stem-splitting and using Frankenstem. 
+
+# Recommended settings
+Start with a beat range of 1-2 beats, with all stem types selected (no energy filter). 
+
+You can experiment with setting the BPM to x2 (or more) the original BPM for shorter fragments. 
+
+# Features 
 - *Stem support*: works with vocals, drums, bass, and other instrument stems (as per Ultimate Vocal Remover (HCUS model) and Logic Pro X stem-splitter).
 - *Random beat-length splicing* (configurable min/max beats)
 - *Transient-based slicing* (onset detection)
